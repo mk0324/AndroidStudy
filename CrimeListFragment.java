@@ -95,6 +95,7 @@ public class CrimeListFragment extends Fragment {
                 return true;
             case R.id.menu_item_show_subtitle:
                 mSubtitleVisible = !mSubtitleVisible;
+                // 사용자가 액션항목을 선택했을 때 액션항목을 다시 생성하도록 코드 추가한 것
                 getActivity().invalidateOptionsMenu();
                 updateSubtitle();
                 return true;
@@ -102,16 +103,21 @@ public class CrimeListFragment extends Fragment {
                 return super.onOptionsItemSelected(item);
         }
     }
-
+    // 툴바의 서브타이틀 설정하기
     private void updateSubtitle(){
+        // 호스팅하는 액티비티의 인스턴스 상태를 전달하여 범죄리스트를 받아옴,????
+        // CrimeLab 은 싱글톤 객체이기 때문에 get()메서드를 통해서 접근 필요하다.
         CrimeLab crimeLab = CrimeLab.get(getActivity());
+        // getCrimes() 메서드가 리스트를 반환하는 메서드이므로 갯수 반환가능
         int crimeCount = crimeLab.getCrimes().size();
+        // getString()메서드를 사용하여 서브타이틀 문자열(앱 이름 아래에 생김)을 생성한다.
+        // 이때 범죄 건수를 두 번째 인자로 받는다.
         String subtitle = getString(R.string.subtitle_format, crimeCount);
 
         if(!mSubtitleVisible){
             subtitle = null;
         }
-
+        // CrimeListFragment 를 호스팅하는 액티비티의 타입을 AppCompatActivity 로 캐스팅(변환)한다.
         AppCompatActivity activity = (AppCompatActivity)getActivity();
         activity.getSupportActionBar().setSubtitle(subtitle);
     }
