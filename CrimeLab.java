@@ -52,6 +52,14 @@ public class CrimeLab {
         ContentValues values = getContentValues(c);
         mDatabase.insert(CrimeTable.NAME, null, values);
     }
+    // 범죄리스트 삭제하기
+    public void deleteCrime(Crime c) {
+        String uuidString = c.getId().toString();
+        ContentValues values = getContentValues(c);
+        mDatabase.delete(CrimeTable.NAME,
+                CrimeTable.Cols.UUID + " = ? ",
+                new String[] {uuidString});
+    }
     //생성된 List를 반환하는 getCrimes() 메서드
     public List<Crime> getCrimes(){
         // return mCrimes;

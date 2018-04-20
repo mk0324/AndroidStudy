@@ -6,10 +6,14 @@ import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
+import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateFormat;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -30,6 +34,7 @@ public class CrimeFragment extends Fragment {
     private static final String DIALOG_DATE = "DialogDate";
 
     private static final int REQUEST_DATE = 0;
+    private static final int REQUEST_CRIME = 1;
 
     private Crime mCrime;
     private EditText mTitleField;
@@ -52,6 +57,8 @@ public class CrimeFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
+        // 메뉴 콜백 호출 받기
+        setHasOptionsMenu(true);
         //mCrime = new Crime();
         //UUID crimeId = (UUID)getActivity().getIntent().getSerializableExtra(CrimeActivity.EXTRA_CRIME_ID);
         //프래그먼트가 자신에게 전달된 인자를 액세스하려면 Fragment 클래스의 메서드인 getArgument()를 호출한 후
@@ -69,6 +76,42 @@ public class CrimeFragment extends Fragment {
         CrimeLab.get(getActivity())
                 .updateCrime(mCrime);
     }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater){
+        super.onCreateOptionsMenu(menu, inflater);
+        // 메뉴파일의 리소스를 인자로 전달
+        inflater.inflate(R.menu.detail_fragment_menu, menu);
+    }
+    // 메뉴 선택에 응답하기
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_item_show_choose_delete:
+                UUID crimeId = (UUID)getArguments().getSerializable(ARG_CRIME_ID);
+                mCrime = CrimeLab.get(getActivity()).getCrime(crimeId);
+                CrimeLab.get(getActivity()).deleteCrime(mCrime);
+                // 호스팅하는 액티비티를 받아와서 종료 -> 상위 액티비티로 전환됨.
+                getActivity().finish();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+/*
+    private void updateSubtitle(){
+        CrimeLab crimeLab = CrimeLab.get(getActivity());
+        int crimeCount = crimeLab.getCrimes().size();
+        String subtitle = getString(R.string.subtitle_format, crimeCount);
+
+        if(!mSubtitleVisible){
+            subtitle = null;
+        }
+
+        AppCompatActivity activity = (AppCompatActivity)getActivity();
+        activity.getSupportActionBar().setSubtitle(subtitle);
+    }
+*/
 
     //onCreateView 메서드 오버라이드하기
     @Override
