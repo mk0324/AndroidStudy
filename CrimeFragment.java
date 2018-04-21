@@ -2,6 +2,9 @@ package com.bignerdranch.andorid.deutschcrime;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.support.v4.app.Fragment;
@@ -34,12 +37,14 @@ public class CrimeFragment extends Fragment {
     private static final String DIALOG_DATE = "DialogDate";
 
     private static final int REQUEST_DATE = 0;
-    private static final int REQUEST_CRIME = 1;
+    private static final int REQUEST_CONTACT = 1;
 
     private Crime mCrime;
     private EditText mTitleField;
     private Button mDateButton;
     private CheckBox mSolvedCheckBox;
+    private Button mSuspectButton;
+    private Button mReportButton;
 
     //newInstance(UUID)메서드 작성하기
     //CrimeActivity에서 CrimeFragment.newInstance(UUID)를 호출하여 CrimeFragment를 생성할 것.
@@ -98,20 +103,6 @@ public class CrimeFragment extends Fragment {
                 return super.onOptionsItemSelected(item);
         }
     }
-/*
-    private void updateSubtitle(){
-        CrimeLab crimeLab = CrimeLab.get(getActivity());
-        int crimeCount = crimeLab.getCrimes().size();
-        String subtitle = getString(R.string.subtitle_format, crimeCount);
-
-        if(!mSubtitleVisible){
-            subtitle = null;
-        }
-
-        AppCompatActivity activity = (AppCompatActivity)getActivity();
-        activity.getSupportActionBar().setSubtitle(subtitle);
-    }
-*/
 
     //onCreateView 메서드 오버라이드하기
     @Override
@@ -159,6 +150,42 @@ public class CrimeFragment extends Fragment {
                 mCrime.setSolved(isChecked);
             }
         });
+        final Intent pickContact = new Intent(Intent.ACTION_PICK,
+                ContactsContract.Contacts.CONTENT_URI);
+        //인텐트 필터 테스터를 위한 코드 -> CATEGORY_HOME 플래그를 추가하여 테스트해보기
+        //pickContact.addCategory(Intent.CATEGORY_HOME);
+        mSuspectButton=(Button)v.findViewById(R.id.crime_suspect);
+        mSuspectButton.setOnClickListener(new View.OnClickListener(){
+            public void onClick(View v){
+                startActivityForResult(pickContact, REQUEST_CONTACT);
+            }
+        });
+        if (mCrime.getSuspect() != null){
+            mSuspectButton.setText(mCrime.getSuspect());
+        }
+        // 전송하기 버튼 에서 참조 얻는 리스너 구현하기
+        mReportButton = (Button) v.findViewById(R.id.crime_report);
+        mReportButton.setOnClickListener(new View.OnClickListener(){
+            public void onClick(View v){
+                // 액션을 정의하는 상수 문자열을 인자로 받는 Intent 생성자를 사용
+                // 생성해야할 암시적 인텐트의 종류에 따라 다른 생성자를 사용할 수 있음
+                Intent i = new Intent(Intent.ACTION_SEND);
+                i.setType("text/plain");
+                i.putExtra(Intent.EXTRA_TEXT, getCrimeReport());
+                i.putExtra(Intent.EXTRA_SUBJECT,
+                        getString(R.string.crime_report_subject));
+                // 암시적 인텐트가 사용될 때마다 매번 선택기가 나타나도록 하기.
+                i = Intent.createChooser(i, getString(R.string.send_report));
+                startActivity(i);
+            }
+        });
+        // 장치에 적합한 앱이 없을 경우 운영체제가 일치하는 액티비티를 찾을 수 없으므로 앱이 중단됨
+        // 해결책으로 안드로이드 운영체제의 일부인 PackageManager 를 확인하는 방법
+        PackageManager packageManager = getActivity().getPackageManager();
+        if(packageManager.resolveActivity(pickContact,
+                PackageManager.MATCH_DEFAULT_ONLY) == null){
+            mSuspectButton.setEnabled(false);
+        }
         return v;
     }
 
@@ -171,10 +198,56 @@ public class CrimeFragment extends Fragment {
             Date date = (Date) data
                     .getSerializableExtra(DatePickerFragment.EXTRA_DATE);
             mCrime.setDate(date);
+            updateDate();
+        }else if(requestCode == REQUEST_CONTACT && data != null){
+            Uri contactUri = data.getData();
+            // 값을 반환할 쿼리 필드를 지정한다.
+            String[] queryFields = new String[]{
+                    ContactsContract.Contacts.DISPLAY_NAME
+            };
+            // 쿼리를 수행한다. 여기서 contactUri는
+            // SQL 의 "where" 절에 해당
+            Cursor c = getActivity().getContentResolver()
+            .query(contactUri, queryFields, null, null, null);
+            try{
+                // 쿼리의 결과 데이터가 있는지 재확인한다.
+                if(c.getCount() == 0){
+                    return;
+                }
+                // 첫번째 데이터 행(row)의 첫 번째 열(column)을 추출
+                // 그것이 함께할 사람의 이름
+                c.moveToFirst();
+                String suspect = c.getString(0);
+                mCrime.setSuspect(suspect);
+                mSuspectButton.setText(suspect);
+            }finally {
+                c.close();
+            }
         }
     }
     private void updateDate(){
         mDateButton.setText(mCrime.getDate().toString());
+    }
+
+    private String getCrimeReport(){
+        String solvedString = null;
+        if(mCrime.isSolved()){
+            solvedString = getString(R.string.crime_report_solved);
+        }else {
+            solvedString = getString(R.string.crime_report_unsolved);
+        }
+        String dateFormat = "EEE, MMM dd";
+        String dateString = DateFormat.format(dateFormat, mCrime.getDate()).toString();
+
+        String suspect = mCrime.getSuspect();
+        if(suspect == null){
+            suspect = getString(R.string.crime_report_no_suspect);
+        }else {
+            suspect = getString(R.string.crime_report_suspect, suspect);
+        }
+        String report = getString(R.string.crime_report, mCrime.getTitle(), dateString, solvedString, suspect);
+
+        return report;
     }
 
     public void returnResult(){
