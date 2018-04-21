@@ -4,11 +4,14 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
+import android.provider.MediaStore;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -23,7 +26,10 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 
+import java.io.File;
 import java.util.Date;
 import java.util.UUID;
 
@@ -38,13 +44,17 @@ public class CrimeFragment extends Fragment {
 
     private static final int REQUEST_DATE = 0;
     private static final int REQUEST_CONTACT = 1;
+    private static final int REQUEST_PHOTO = 2;
 
     private Crime mCrime;
+    private File mPhotoFile;
     private EditText mTitleField;
     private Button mDateButton;
     private CheckBox mSolvedCheckBox;
     private Button mSuspectButton;
     private Button mReportButton;
+    private ImageButton mPhotoButton;
+    private ImageView mPhotoView;
 
     //newInstance(UUID)메서드 작성하기
     //CrimeActivity에서 CrimeFragment.newInstance(UUID)를 호출하여 CrimeFragment를 생성할 것.
@@ -70,6 +80,8 @@ public class CrimeFragment extends Fragment {
         //Bundle의 get메서드들(타입별로 다름) 중 하나를 호출하면 된다.
         UUID crimeId = (UUID)getArguments().getSerializable(ARG_CRIME_ID);
         mCrime = CrimeLab.get(getActivity()).getCrime(crimeId);
+        // 사진 파일 위치 저장하기
+        mPhotoFile = CrimeLab.get(getActivity()).getPhotoFile(mCrime);
     }
     // 범죄 인스턴스는 CrimeFragment에서 변경되므로
     // CrimeFragment가 일시중단될 때는 데이터 베이스에 저장하도록
@@ -186,6 +198,31 @@ public class CrimeFragment extends Fragment {
                 PackageManager.MATCH_DEFAULT_ONLY) == null){
             mSuspectButton.setEnabled(false);
         }
+
+        mPhotoButton = (ImageButton)v.findViewById(R.id.crime_camera);
+
+        final Intent captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        // 인텐트를 받아 실행될 카메라 앱이 없거나 또는 사진을 저장할 위치가 없는 경우 버튼을 비활성화
+        boolean canTakePhoto = mPhotoFile != null && captureImage.resolveActivity(packageManager) != null;
+        mPhotoButton.setEnabled(canTakePhoto);
+
+        if(canTakePhoto){
+            //Uri uri = Uri.fromFile(mPhotoFile);
+            Uri uri = FileProvider.getUriForFile(getContext(),
+                    BuildConfig.APPLICATION_ID + ".provider",
+                    mPhotoFile);
+            captureImage.putExtra(MediaStore.EXTRA_OUTPUT, uri);
+        }
+
+        mPhotoButton.setOnClickListener(new View.OnClickListener(){
+           @Override
+           public void onClick(View v){
+               startActivityForResult(captureImage, REQUEST_PHOTO);
+           }
+        });
+
+        mPhotoView = (ImageView)v.findViewById(R.id.crime_photo);
+        updatePhotoView();
         return v;
     }
 
@@ -194,6 +231,7 @@ public class CrimeFragment extends Fragment {
         if(resultCode != Activity.RESULT_OK){
             return;
         }
+
         if(requestCode == REQUEST_DATE){
             Date date = (Date) data
                     .getSerializableExtra(DatePickerFragment.EXTRA_DATE);
@@ -223,6 +261,8 @@ public class CrimeFragment extends Fragment {
             }finally {
                 c.close();
             }
+        }else if(requestCode == REQUEST_PHOTO){
+            updatePhotoView();
         }
     }
     private void updateDate(){
@@ -248,6 +288,15 @@ public class CrimeFragment extends Fragment {
         String report = getString(R.string.crime_report, mCrime.getTitle(), dateString, solvedString, suspect);
 
         return report;
+    }
+
+    private void updatePhotoView(){
+        if(mPhotoFile == null || !mPhotoFile.exists()){
+            mPhotoView.setImageDrawable(null);
+        }else {
+            Bitmap bitmap = PictureUtils.getScaledBitmap(mPhotoFile.getPath(), getActivity());
+            mPhotoView.setImageBitmap(bitmap);
+        }
     }
 
     public void returnResult(){

@@ -4,11 +4,13 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.os.Environment;
 
 import com.bignerdranch.andorid.deutschcrime.database.CrimeBaseHelper;
 import com.bignerdranch.andorid.deutschcrime.database.CrimeCursorWrapper;
 import com.bignerdranch.andorid.deutschcrime.database.CrimeDbSchema.CrimeTable;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -17,6 +19,8 @@ import java.util.UUID;
  * 싱글톤!!!!!!!! singleton
  * Created by 최문경 on 2017-12-04.
  */
+
+//데이터 저장에 관련된 모든 것을 책임지고 있는!
 //싱글톤을 생성할 때는 private생성자와 get()메서드를 각각 하나씩 갖는 클래스를 생성해야 한다.
 public class CrimeLab {
 
@@ -133,7 +137,19 @@ public class CrimeLab {
             cursor.close();
         }
     }
+    // 사진 파일 위치 찾기
+    public File getPhotoFile(Crime crime){
+        // 파일을 저장할 외부 스토리지가 있는 지 확인
+        // 없으면 getExternalFilesDir(String) 에서 null을 반환
+        File externalFilesDir = mContext
+                .getExternalFilesDir(Environment.DIRECTORY_PICTURES);
 
+        if(externalFilesDir == null){
+            return null;
+        }
+        // 파일시스템의 어떤 파일도 생성하지 않고 파일의 올바른 위치를 가리키는 File 객체만 반환
+        return new File(externalFilesDir, crime.getPhotoFilename());
+    }
     public void updateCrime(Crime crime){
         String uuidString = crime.getId().toString();
         ContentValues values = getContentValues(crime);
